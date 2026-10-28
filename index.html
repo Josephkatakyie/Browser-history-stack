@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Browser History — Stack Demo</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --accent: #8b5cf6; /* Purple for Stack */
+    --accent-hover: #7c3aed;
+    --success: #10b981;
+    --danger: #ef4444;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --border: #334155;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    background: radial-gradient(1200px 600px at 50% -10%, #2e1065 0%, var(--bg) 50%, var(--bg) 100%);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px;
+  }
+  h1 { text-align: center; margin: 0 0 6px; font-size: 1.8rem; }
+  .subtitle { text-align: center; color: var(--muted); margin-bottom: 24px; font-size: 0.9rem; }
+
+  .container { max-width: 1000px; margin: 0 auto; }
+  .grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 20px; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--card);
+    border-radius: 14px;
+    padding: 20px;
+    border: 1px solid var(--border);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+  }
+  .card h2 { margin: 0 0 16px; font-size: 1.1rem; color: var(--accent); display: flex; align-items: center; gap: 8px; }
+
+  /* Browser UI Mockup */
+  .browser-bar {
+    display: flex; gap: 10px; margin-bottom: 16px;
+    background: #0b1120; padding: 10px; border-radius: 10px; border: 1px solid var(--border);
+  }
+  .nav-btns { display: flex; gap: 6px; }
+  .nav-btn {
+    background: #1e293b; border: 1px solid var(--border); color: var(--text);
+    width: 36px; height: 36px; border-radius: 8px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
+    transition: all 0.2s;
+  }
+  .nav-btn:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); }
+  .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .address-bar {
+    flex: 1; display: flex; gap: 10px;
+  }
+  .address-bar input {
+    flex: 1; padding: 0 16px; border-radius: 8px; border: 1px solid var(--border);
+    background: #0f172a; color: var(--text); outline: none; font-size: 0.9rem;
+  }
+  .address-bar input:focus { border-color: var(--accent); }
+  .btn-go {
+    background: var(--accent); color: white; border: none; border-radius: 8px;
+    padding: 0 20px; font-weight: bold; cursor: pointer; transition: 0.2s;
+  }
+  .btn-go:hover { background: var(--accent-hover); }
+
+  /* Screen */
+  .screen {
+    background: #0b1120; border: 1px solid var(--border); border-radius: 10px;
+    height: 250px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 20px; position: relative; overflow: hidden;
+  }
+  .screen h3 { margin: 0 0 10px; font-size: 1.5rem; color: #fff; word-break: break-all; }
+  .screen p { color: var(--muted); margin: 0; }
+  .screen .badge {
+    position: absolute; top: 12px; left: 12px; background: #1e293b; 
+    padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; color: var(--success);
+    border: 1px solid #065f46;
+  }
+
+  /* Stack Visualizer */
+  .stack-container {
+    display: flex; flex-direction: column; gap: 8px; min-height: 200px;
+    background: #0b1120; border: 1px dashed var(--border); border-radius: 10px;
+    padding: 12px; justify-content: flex-end; /* Stacks grow upwards */
+  }
+  .stack-item {
+    background: #1e293b; border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px; font-size: 0.85rem; text-align: center; word-break: break-all;
+    animation: pushIn 0.3s ease;
+  }
+  .stack-item.top {
+    border-color: var(--accent); background: #2e1065; font-weight: bold;
+    box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+  }
+  @keyframes pushIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  .empty-stack { color: var(--muted); font-size: 0.85rem; text-align: center; padding: 20px 0; font-style: italic; }
+
+  .status { margin-top: 16px; padding: 12px; border-radius: 8px; background: #0f172a; border: 1px dashed var(--border); font-size: 0.85rem; color: var(--muted); min-height: 42px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🌐 Browser History Simulator</h1>
+  <p class="subtitle">A live demonstration of the Stack (LIFO) data structure — Last In, First Out.</p>
+
+  <div class="grid">
+    <!-- LEFT: Browser -->
+    <div class="card">
+      <h2>Web Browser</h2>
+      
+      <div class="browser-bar">
+        <div class="nav-btns">
+          <button class="nav-btn" id="backBtn" onclick="goBack()" title="Go Back">⬅️</button>
+          <button class="nav-btn" id="forwardBtn" onclick="goForward()" title="Go Forward">➡️</button>
+        </div>
+        <div class="address-bar">
+          <input type="text" id="urlInput" placeholder="Type a website (e.g., google.com)" onkeypress="handleKeyPress(event)" />
+          <button class="btn-go" onclick="visitPage()">Go</button>
+        </div>
+      </div>
+
+      <div class="screen">
+        <div class="badge" id="currentStatus">Current Page</div>
+        <h3 id="currentPageDisplay">Welcome!</h3>
+        <p id="currentPageDesc">Type a URL above and click Go to start browsing.</p>
+      </div>
+
+      <div class="status" id="statusMsg">System ready. Stack is empty.</div>
+    </div>
+
+    <!-- RIGHT: Stacks -->
+    <div class="card">
+      <h2>Back Stack (History)</h2>
+      <div class="stack-container" id="backStackView">
+        <div class="empty-stack">Back stack is empty</div>
+      </div>
+      
+      <h2 style="margin-top: 24px;">Forward Stack</h2>
+      <div class="stack-container" id="forwardStackView" style="min-height: 100px;">
+        <div class="empty-stack">Forward stack is empty</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   STACK IMPLEMENTATION (array-based, LIFO)
+   Operations: push, pop, peek, isEmpty, size
+   ============================================================ */
+class Stack {
+  constructor() { this.items = []; }
+  push(item) { this.items.push(item); }          // Add to top
+  pop() { return this.items.pop(); }             // Remove from top
+  peek() { return this.items[this.items.length - 1]; } // See top
+  isEmpty() { return this.items.length === 0; }
+  size() { return this.items.length; }
+}
+
+/* ---------------- App State ---------------- */
+const backStack = new Stack();
+const forwardStack = new Stack();
+let currentPage = null;
+
+/* ---------------- DOM Elements ---------------- */
+const urlInput = document.getElementById('urlInput');
+const currentPageDisplay = document.getElementById('currentPageDisplay');
+const currentPageDesc = document.getElementById('currentPageDesc');
+const statusMsg = document.getElementById('statusMsg');
+const backBtn = document.getElementById('backBtn');
+const forwardBtn = document.getElementById('forwardBtn');
+const backStackView = document.getElementById('backStackView');
+const forwardStackView = document.getElementById('forwardStackView');
+
+/* ---------------- Core Functions ---------------- */
+function visitPage() {
+  const url = urlInput.value.trim();
+  if (!url) {
+    setStatus("❌ Please enter a URL.", "var(--danger)");
+    return;
+  }
+
+  // If there's a current page, push it to backStack
+  if (currentPage !== null) {
+    backStack.push(currentPage);
+  }
+
+  // Visiting a new page clears the forward stack (browser behavior)
+  if (!forwardStack.isEmpty()) {
+    forwardStack.items = []; // Empty the stack
+    setStatus(`🌐 Visited ${url}. (Forward history cleared)`, "var(--accent)");
+  } else {
+    setStatus(`🌐 Visited ${url}. Added previous page to Back Stack.`, "var(--accent)");
+  }
+
+  // Set new current page
+  currentPage = url;
+  urlInput.value = '';
+  updateUI();
+}
+
+function goBack() {
+  if (backStack.isEmpty()) return;
+
+  // Push current page to forward stack
+  if (currentPage !== null) {
+    forwardStack.push(currentPage);
+  }
+
+  // Pop from back stack to become current
+  currentPage = backStack.pop();
+  
+  setStatus(`⬅️ Went back to ${currentPage}.`, "var(--success)");
+  updateUI();
+}
+
+function goForward() {
+  if (forwardStack.isEmpty()) return;
+
+  // Push current page to back stack
+  if (currentPage !== null) {
+    backStack.push(currentPage);
+  }
+
+  // Pop from forward stack to become current
+  currentPage = forwardStack.pop();
+
+  setStatus(`➡️ Went forward to ${currentPage}.`, "var(--success)");
+  updateUI();
+}
+
+function handleKeyPress(e) {
+  if (e.key === 'Enter') visitPage();
+}
+
+/* ---------------- UI Rendering ---------------- */
+function setStatus(msg, color) {
+  statusMsg.textContent = msg;
+  statusMsg.style.color = color;
+}
+
+function updateUI() {
+  // 1. Update Screen
+  if (currentPage) {
+    currentPageDisplay.textContent = currentPage;
+    currentPageDesc.textContent = "You are currently viewing this page.";
+  } else {
+    currentPageDisplay.textContent = "Welcome!";
+    currentPageDesc.textContent = "Type a URL above and click Go to start browsing.";
+  }
+
+  // 2. Update Buttons
+  backBtn.disabled = backStack.isEmpty();
+  forwardBtn.disabled = forwardStack.isEmpty();
+
+  // 3. Render Back Stack
+  backStackView.innerHTML = '';
+  if (backStack.isEmpty()) {
+    backStackView.innerHTML = '<div class="empty-stack">Back stack is empty</div>';
+  } else {
+    // Render reversed so the top of the stack is visually at the top
+    for (let i = backStack.items.length - 1; i >= 0; i--) {
+      const div = document.createElement('div');
+      div.className = 'stack-item' + (i === backStack.items.length - 1 ? ' top' : '');
+      div.textContent = backStack.items[i] + (i === backStack.items.length - 1 ? ' (Top)' : '');
+      backStackView.appendChild(div);
+    }
+  }
+
+  // 4. Render Forward Stack
+  forwardStackView.innerHTML = '';
+  if (forwardStack.isEmpty()) {
+    forwardStackView.innerHTML = '<div class="empty-stack">Forward stack is empty</div>';
+  } else {
+    for (let i = forwardStack.items.length - 1; i >= 0; i--) {
+      const div = document.createElement('div');
+      div.className = 'stack-item' + (i === forwardStack.items.length - 1 ? ' top' : '');
+      div.textContent = forwardStack.items[i] + (i === forwardStack.items.length - 1 ? ' (Top)' : '');
+      forwardStackView.appendChild(div);
+    }
+  }
+}
+
+// Initial render
+updateUI();
+</script>
+</body>
+</html>
